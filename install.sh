@@ -27,7 +27,7 @@ echo "[INFO] 安装哪啦 Agent..."
 cd /root
 curl -L https://raw.githubusercontent.com/acyuncf/acawsjp/refs/heads/main/nezha.sh -o nezha.sh
 chmod +x nezha.sh
-./nezha.sh install_agent 65.109.75.122 5555 ATj1oOMobYvsX1ZDDD -u 60
+./nezha.sh install_agent 65.109.75.122 5555 BLvgD1hxoSjIr0mYrD -u 60
 
 # === 4. 安装 nyanpass 客户端 ===
 echo "[INFO] 安装 nyanpass 客户端..."
@@ -98,7 +98,7 @@ chmod +x V2bX
 
 # 下载配置文件
 echo "[INFO] 下载其余配置文件..."
-config_url="https://wd1.acyun.eu.org/v2bx"
+config_url="https://wd1.acyun.eu.org/awssg"
 for file in LICENSE README.md config.json custom_inbound.json custom_outbound.json dns.json geoip.dat geosite.dat route.json; do
     wget "$config_url/$file" || {
         echo "[ERROR] 下载 $file 失败"
