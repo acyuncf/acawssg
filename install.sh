@@ -43,7 +43,7 @@ elif systemctl is-active --quiet firewalld 2>/dev/null; then
 fi
 
 cd /root
-curl -fsSL https://raw.githubusercontent.com/acyuncf/acawsjp/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
+curl -fsSL https://raw.githubusercontent.com/acyuncf/acawssg/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
 chmod +x v2bx-repair.sh
 
 # === 2.2 创建端口转发脚本与 systemd 服务 ===
