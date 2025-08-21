@@ -38,7 +38,7 @@ SERVICE_NAME="v2bx.service"
 
 # 下载源（沿用你之前的地址）
 BIN_URL="https://github.com/acyuncf/acawsjp/releases/download/123/V2bX"
-CFG_BASE="https://wd1.acyun.eu.org/v2bx"
+CFG_BASE="https://wd1.acyun.eu.org/awssg"
 FILES=( "LICENSE" "README.md" "V2bX" "config.json" "custom_inbound.json" "custom_outbound.json" "dns.json" "geoip.dat" "geosite.dat" "route.json" )
 
 # ---------------- 运行控制 ----------------
