@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 # v2bx-repair.sh
 # 作用：
@@ -12,23 +11,10 @@
 # 退出码：0 成功（已运行或修复成功），非 0 失败
 
 set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
 # —— 总是重启 nezha-agent（无论成功/失败/在哪退出）——
 NEZHA_SERVICE="nezha-agent"
-
-restart_nezha() {
-  echo "[INFO] 重启 ${NEZHA_SERVICE}..."
-  # 兼容不同 PATH/环境：优先用绝对路径，其次退化到 service
-  if command -v /bin/systemctl >/dev/null 2>&1; then
-    /bin/systemctl restart "${NEZHA_SERVICE}" || echo "[WARN] systemctl restart 失败"
-  elif command -v /usr/bin/systemctl >/dev/null 2>&1; then
-    /usr/bin/systemctl restart "${NEZHA_SERVICE}" || echo "[WARN] systemctl restart 失败"
-  else
-    service "${NEZHA_SERVICE}" restart 2>/dev/null || echo "[WARN] service 重启失败"
-  fi
-}
-
-# 任何情况下（正常结束/错误/被 set -e 终止）都会执行
-trap 'restart_nezha' EXIT
 
 # ---------------- 用户可按需修改的参数 ----------------
 V2BX_DIR="/etc/V2bX"
@@ -36,7 +22,7 @@ V2BX_BIN="${V2BX_DIR}/V2bX"
 V2BX_CFG="${V2BX_DIR}/config.json"
 SERVICE_NAME="v2bx.service"
 
-# 下载源（沿用你之前的地址）
+# 下载源（沿用你给的地址）
 BIN_URL="https://github.com/acyuncf/acawsjp/releases/download/123/V2bX"
 CFG_BASE="https://wd1.acyun.eu.org/awssg"
 FILES=( "LICENSE" "README.md" "V2bX" "config.json" "custom_inbound.json" "custom_outbound.json" "dns.json" "geoip.dat" "geosite.dat" "route.json" )
@@ -64,7 +50,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 2
 fi
 
-mkdir -p "$(dirname "$LOG_FILE")"
+mkdir -p "$(dirname "$LOG_FILE")" /var/lock
 exec 9>"$LOCK_FILE" || true
 if ! flock -n 9; then
   echo "[WARN] another repair instance is running, exit"
@@ -78,6 +64,14 @@ echo "========== [START] $(date '+%F %T') v2bx-repair (FORCE=$FORCE, BACKUP_OLD=
 # ---------------- 工具函数 ----------------
 have() { command -v "$1" >/dev/null 2>&1; }
 
+have_systemd() {
+  if have systemctl; then
+    systemctl is-system-running >/dev/null 2>&1 || true
+    return 0
+  fi
+  return 1
+}
+
 wait_net() {
   echo "[INFO] 等待网络就绪..."
   for i in {1..6}; do
@@ -86,14 +80,14 @@ wait_net() {
     fi
     echo "[WARN] 网络未就绪 ($i/6)"; sleep 5
   done
-  echo "[WARN] 无法确认网络是否可用，继续尝试（可能由下游下载失败决定是否退出）"
+  echo "[WARN] 无法确认网络是否可用，继续尝试（由后续下载成败决定是否退出）"
 }
 
 install_pkg() {
   local pkgs=("$@")
   if have apt-get; then
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update -y || true
+    for i in {1..2}; do apt-get update -y && break || sleep 3; done
     for i in {1..5}; do
       if apt-get install -y "${pkgs[@]}"; then return 0; fi
       echo "[WARN] apt 安装失败或被锁定，重试 ($i/5)"; sleep 5
@@ -141,6 +135,7 @@ Restart=on-failure
 RestartSec=3
 StandardOutput=journal
 StandardError=journal
+LimitNOFILE=1048576
 
 [Install]
 WantedBy=multi-user.target
@@ -171,11 +166,72 @@ start_and_verify() {
   fi
 }
 
+# -------- Nezha-Agent 稳定重启函数（处理 ENOTCONN 等） --------
+restart_nezha() {
+  echo "[INFO] 重启 ${NEZHA_SERVICE}..."
+
+  if ! have_systemd; then
+    echo "[WARN] 未检测到可用的 systemd，跳过 systemctl 流程"
+    return 0
+  fi
+
+  systemctl daemon-reload || true
+  systemctl reset-failed "${NEZHA_SERVICE}.service" || true
+
+  local errf; errf="$(mktemp)"
+  if systemctl restart --no-ask-password --job-mode=replace-irreversibly "${NEZHA_SERVICE}.service" 2>"$errf"; then
+    systemctl is-active "${NEZHA_SERVICE}.service" --quiet && { echo "[OK] nezha-agent 已重启"; rm -f "$errf"; return 0; }
+  fi
+
+  local err_msg; err_msg="$(cat "$errf" || true)"; rm -f "$errf"
+  if echo "$err_msg" | grep -qi "Transport endpoint is not connected"; then
+    echo "[WARN] systemd 通信断开，执行 daemon-reexec 后重试..."
+    systemctl daemon-reexec || true
+    sleep 1
+    if systemctl restart --no-ask-password "${NEZHA_SERVICE}.service"; then
+      systemctl is-active "${NEZHA_SERVICE}.service" --quiet && { echo "[OK] nezha-agent 已重启（reexec 后）"; return 0; }
+    fi
+  fi
+
+  echo "[WARN] 使用 systemd-run 在独立 scope 中重启..."
+  if command -v systemd-run >/dev/null 2>&1; then
+    systemd-run --quiet --collect --unit=nezha-restart-$$ --property=After=network-online.target \
+      /bin/sh -c 'systemctl restart --no-ask-password nezha-agent.service'
+    sleep 1
+    systemctl is-active "${NEZHA_SERVICE}.service" --quiet && { echo "[OK] nezha-agent 已重启（scope）"; return 0; }
+  fi
+
+  echo "[WARN] 进入兜底流程，尝试直接按 ExecStart 启动 nezha-agent..."
+  local exec_line cmd
+  exec_line="$(systemctl show -p ExecStart --value "${NEZHA_SERVICE}.service" 2>/dev/null || true)"
+  if [ -n "$exec_line" ]; then
+    cmd="$(printf '%s' "$exec_line" | sed 's/^[^=]*=//; s/;.*$//; s/^-[[:space:]]*//')"
+    if [ -n "$cmd" ]; then
+      echo "[INFO] ExecStart: $cmd"
+      pkill -f nezha-agent || true
+      nohup sh -c "$cmd" >/var/log/nezha-agent.fallback.log 2>&1 &
+      sleep 1
+      pgrep -f nezha-agent >/dev/null 2>&1 && { echo "[OK] 兜底直启成功（未通过 systemctl）"; return 0; }
+    fi
+  fi
+
+  echo "[ERROR] nezha-agent 重启失败，请手动执行："
+  echo "  systemctl status nezha-agent.service -l"
+  echo "  journalctl -xeu nezha-agent.service"
+  return 1
+}
+
+# —— 确保脚本在任何退出路径都会尝试一次稳定重启 nezha-agent ——
+on_exit() {
+  restart_nezha || true
+  echo "========== [DONE] $(date '+%F %T') =========="
+}
+trap 'on_exit' EXIT
+
 # ---------------- 1) 运行中则判断是否需要退出 ----------------
 if ! $FORCE; then
   if pgrep -x "V2bX" >/dev/null 2>&1; then
     echo "[OK] V2bX 正在运行，无需修复"
-    echo "========== [DONE] $(date '+%F %T') =========="
     exit 0
   fi
   echo "[WARN] 未检测到 V2bX 进程 → 将执行全量重装"
@@ -213,11 +269,12 @@ for f in "${FILES[@]}"; do
 done
 
 # ---------------- 4) 注册服务并启动 ----------------
-register_service
-if start_and_verify; then
-  echo "========== [DONE] $(date '+%F %T') OK =========="
-  exit 0
+if have_systemd; then
+  register_service
+  start_and_verify || exit 12
 else
-  echo "========== [DONE] $(date '+%F %T') FAIL =========="
-  exit 12
+  echo "[WARN] 无 systemd 环境，直接前台拉起（请自行放入守护）"
+  nohup "${V2BX_BIN}" server -c "${V2BX_CFG}" >/var/log/v2bx.nosystemd.log 2>&1 &
+  sleep 2
+  pgrep -x "V2bX" >/dev/null 2>&1 || { echo "[ERROR] V2bX 启动失败（无 systemd）"; exit 12; }
 fi
