@@ -33,57 +33,106 @@ chmod +x nezha.sh
 echo "[INFO] 安装 nyanpass 客户端..."
 S=nyanpass OPTIMIZE=1 bash <(curl -fLSs https://dl.nyafw.com/download/nyanpass-install.sh) rel_nodeclient "-o -t e1fa8b04-f707-41d6-b443-326a0947fa2f -u https://ny.321337.xyz"
 
-# === 2.1 开放本机防火墙端口（若存在防火墙）===
-echo "[INFO] 开放 41243/tcp（如果启用防火墙）..."
-if command -v ufw >/dev/null 2>&1; then
-    ufw allow 41243/tcp || true
-elif systemctl is-active --quiet firewalld 2>/dev/null; then
-    firewall-cmd --permanent --add-port=41243/tcp || true
-    firewall-cmd --reload || true
-fi
-
 cd /root
 curl -fsSL https://raw.githubusercontent.com/acyuncf/acawssg/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
 chmod +x v2bx-repair.sh
 
-# === 2.2 创建端口转发脚本与 systemd 服务 ===
-echo "[INFO] 创建端口转发服务（0.0.0.0:41243 -> sg13.111165.xyz:41243）..."
-cat >/usr/local/bin/port_forward_41243.sh <<'EOF'
-#!/bin/bash
-LOG="/var/log/port_forward_41243.log"
-exec >> "$LOG" 2>&1
-echo "[INFO] port_forward_41243 启动于 $(date)"
-# 使用循环保证异常退出后自动重启
-while true; do
-    # -d -d 输出诊断日志；reuseaddr 避免 TIME_WAIT 绑定失败；fork 多并发
-    socat -d -d TCP-LISTEN:41243,reuseaddr,fork TCP:sg13.111165.xyz:41243
-    code=$?
-    echo "[WARN] socat 退出（code=$code），2s 后重启 $(date)"
-    sleep 2
-done
-EOF
-chmod +x /usr/local/bin/port_forward_41243.sh
+install -d -m 755 /usr/local/bin
+cat >/usr/local/bin/port_forward_env.sh <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+PORT="${PORT:?missing PORT}"
+TARGET_HOST="${TARGET_HOST:?missing TARGET_HOST}"
+TARGET_PORT="${TARGET_PORT:?missing TARGET_PORT}"
 
-cat >/etc/systemd/system/port-forward-41243.service <<'EOF'
+echo "[INFO] socat $(date) 0.0.0.0:${PORT} => ${TARGET_HOST}:${TARGET_PORT}"
+# reuseaddr: 避免 TIME_WAIT 绑定失败
+# fork: 支持多并发
+# nodelay/keepalive: 降低时延、保持连接
+exec socat -d -d \
+  TCP-LISTEN:${PORT},reuseaddr,fork,nodelay,keepalive \
+  TCP:${TARGET_HOST}:${TARGET_PORT},nodelay,keepalive
+EOF
+chmod +x /usr/local/bin/port_forward_env.sh
+
+# --- 2) 创建 systemd 模板单元 -------------------------------------------------
+cat >/etc/systemd/system/port-forward@.service <<'EOF'
 [Unit]
-Description=TCP Forward 0.0.0.0:41243 -> sg13.111165.xyz:41243
+Description=TCP Forward (0.0.0.0:%i -> TARGET_HOST:TARGET_PORT)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/port_forward_41243.sh
+EnvironmentFile=/etc/port-forward/%i.env
+ExecStart=/usr/local/bin/port_forward_env.sh
 Restart=always
 RestartSec=2
-# 提高文件描述符上限，避免高并发报错
 LimitNOFILE=1048576
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now port-forward-41243
+
+# --- 3) 需要批量配置的映射 (本地端口 目标主机 目标端口) ----------------------
+declare -a MAPS=(
+"35269 tw1-vds8.anyhk.co 20590"
+"25837 awshk.acyun.eu.org 20230"
+"42048 kr1.acyun.eu.org 48644"
+"35261 awsjp.acyun.eu.org 48803"
+"35263 jp1.acyun.eu.org 15659"
+"35245 sg2.acyun.eu.org 15644"
+"35271 us1.acyun.eu.org 27367"
+"41243 sg13.111165.xyz 41243"
+)
+
+# --- 4) 防火墙开端口函数 -------------------------------------------------------
+open_port() {
+  local port="$1"
+  if command -v ufw >/dev/null 2>&1; then
+    ufw allow "${port}/tcp" || true
+  elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
+    firewall-cmd --permanent --add-port="${port}/tcp" || true
+    firewall-cmd --add-port="${port}/tcp" || true
+    firewall-cmd --reload || true
+  else
+    warn "未检测到 ufw/firewalld，跳过开端口 ${port}/tcp（若无防火墙可忽略）"
+  fi
+}
+
+# --- 5) 写 env、处理旧服务、开端口并启用实例 -----------------------------------
+install -d -m 755 /etc/port-forward
+
+for line in "${MAPS[@]}"; do
+  read -r PORT HOST RPORT <<<"$line"
+
+  # 写入环境文件
+  cat >"/etc/port-forward/${PORT}.env" <<EOF
+PORT=${PORT}
+TARGET_HOST=${HOST}
+TARGET_PORT=${RPORT}
+EOF
+
+  # 若存在旧的单实例服务名（非模板）则尝试停用，避免端口占用
+  systemctl disable --now "port-forward-${PORT}.service" 2>/dev/null || true
+
+  # 开放防火墙
+  open_port "${PORT}"
+
+  # 启用并启动该实例
+  systemctl enable --now "port-forward@${PORT}.service"
+  log "已启动：0.0.0.0:${PORT} => ${HOST}:${RPORT}"
+done
+
+echo
+log "全部完成！常用命令："
+echo "  systemctl status port-forward@41243 --no-pager"
+echo "  journalctl -u port-forward@41243 -f"
+echo "  systemctl disable --now port-forward@35269"
 
 # === 3. 安装 V2bX ===
 echo "[INFO] 从 GitHub Releases 下载 V2bX 主程序..."
