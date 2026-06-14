@@ -62,12 +62,6 @@ chmod +x nezha.sh
 
 ./nezha.sh install_agent 65.109.75.122 5555 SjhrynJdRaR4S2pCUE -u 60
 
-# === 3. 安装 nyanpass 客户端 ===
-
-log "安装 nyanpass 客户端..."
-
-S=nyanpass OPTIMIZE=1 bash <(curl -fLSs https://dl.nyafw.com/download/nyanpass-install.sh) rel_nodeclient "-o -t e1fa8b04-f707-41d6-b443-326a0947fa2f -u https://ny.321337.xyz"
-
 # === 5. 创建 TCP 端口转发脚本 ===
 
 log "创建 TCP 端口转发脚本..."
