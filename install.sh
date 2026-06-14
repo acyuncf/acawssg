@@ -1,7 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-LOG_FILE="/var/log/v2node_init.log"
+LOG_FILE="/var/log/v2bx_init.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log() {
@@ -18,33 +18,23 @@ echo "[ERROR] $*"
 
 log "脚本启动时间: $(date)"
 
-# === 1. 启用 root 登录 ===
-echo "[INFO] 启用 root 登录..."
-echo root:'MHTmht123@' | sudo chpasswd root
-sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sudo systemctl restart sshd
+# === 1. 安装基础依赖：curl / wget / unzip / zip / socat ===
 
-# === 1. 自动安装 unzip、zip、socat、curl、wget、pv ===
-
-log "安装 unzip/zip/socat/curl/wget/pv..."
+log "安装 curl/wget/unzip/zip/socat..."
 
 if command -v apt-get >/dev/null 2>&1; then
 apt-get update -y
 for i in {1..5}; do
-apt-get install -y unzip zip socat curl wget ca-certificates pv && break
-warn "apt 被锁定或失败，等待重试...($i/5)"
+apt-get install -y curl wget unzip zip socat ca-certificates && break
+warn "apt 被锁定或安装失败，等待重试...($i/5)"
 sleep 5
 done
 elif command -v yum >/dev/null 2>&1; then
 yum install -y epel-release || true
-yum install -y unzip zip socat curl wget ca-certificates pv
+yum install -y curl wget unzip zip socat ca-certificates
 elif command -v dnf >/dev/null 2>&1; then
 dnf install -y epel-release || true
-dnf install -y unzip zip socat curl wget ca-certificates pv
-elif command -v apk >/dev/null 2>&1; then
-apk update
-apk add --no-cache unzip zip socat curl wget ca-certificates pv bash
+dnf install -y curl wget unzip zip socat ca-certificates
 else
 error "未知的包管理器，无法自动安装必需依赖"
 exit 1
@@ -61,6 +51,15 @@ curl -L https://raw.githubusercontent.com/acyuncf/acawsjp/refs/heads/main/nezha.
 chmod +x nezha.sh
 
 ./nezha.sh install_agent 65.109.75.122 5555 SjhrynJdRaR4S2pCUE -u 60
+
+
+# === 4. 下载 v2bx-repair.sh ===
+
+log "下载 v2bx-repair.sh..."
+
+cd /root || exit 1
+curl -fsSL https://raw.githubusercontent.com/acyuncf/acawssg/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
+chmod +x v2bx-repair.sh
 
 # === 5. 创建 TCP 端口转发脚本 ===
 
@@ -178,6 +177,65 @@ done
 
 log "端口转发全部配置完成。"
 
+# === 8. 安装 V2bX ===
+
+log "从 GitHub Releases 下载 V2bX 主程序..."
+
+mkdir -p /etc/V2bX
+cd /etc/V2bX || exit 1
+
+systemctl stop v2bx 2>/dev/null || true
+pkill -f "/etc/V2bX/V2bX server -c /etc/V2bX/config.json" 2>/dev/null || true
+
+rm -f V2bX
+
+wget -O V2bX https://github.com/acyuncf/acawsjp/releases/download/123/V2bX || {
+error "V2bX 下载失败，退出"
+exit 1
+}
+
+chmod +x V2bX
+
+# === 9. 下载 V2bX 配置文件 ===
+
+log "下载 V2bX 配置文件..."
+
+config_url="https://wd1.acyun.eu.org/awssg"
+
+for file in LICENSE README.md config.json custom_inbound.json custom_outbound.json dns.json geoip.dat geosite.dat route.json; do
+rm -f "$file"
+wget "$config_url/$file" || {
+error "下载 $file 失败"
+exit 1
+}
+done
+
+# === 10. 注册 V2bX 为 systemd 服务 ===
+
+log "注册 V2bX 为 systemd 服务..."
+
+cat > /etc/systemd/system/v2bx.service <<'EOF'
+[Unit]
+Description=V2bX Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/etc/V2bX
+ExecStart=/etc/V2bX/V2bX server -c /etc/V2bX/config.json
+Restart=always
+RestartSec=10
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable v2bx
+systemctl restart v2bx
+
 # === 8. 安装 v2node ===
 
 log "安装 v2node..."
@@ -195,22 +253,22 @@ bash install.sh \
 systemctl enable v2node || true
 systemctl restart v2node || true
 
-# === 9. 最终状态检查 ===
+# === 11. 最终状态检查 ===
 
-log "检查 v2node 状态..."
-systemctl status v2node --no-pager -l || true
+log "检查 V2bX 状态..."
+systemctl status v2bx --no-pager -l || true
 
 log "检查端口转发示例状态..."
-systemctl status port-forward@31725 --no-pager -l || true
+systemctl status port-forward@41243 --no-pager -l || true
 
 echo
 log "全部完成！日志保存在：$LOG_FILE"
 echo
 echo "常用命令："
-echo "  systemctl status v2node --no-pager -l"
-echo "  journalctl -u v2node -f"
-echo "  systemctl status port-forward@31725 --no-pager"
-echo "  journalctl -u port-forward@31725 -f"
-echo "  systemctl disable --now port-forward@31725"
+echo "  systemctl status v2bx --no-pager -l"
+echo "  journalctl -u v2bx -f"
+echo "  systemctl status port-forward@41243 --no-pager"
+echo "  journalctl -u port-forward@41243 -f"
+echo "  systemctl disable --now port-forward@35269"
 echo
 log "脚本结束时间: $(date)"
