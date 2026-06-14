@@ -19,10 +19,19 @@ echo "[ERROR] $*"
 log "脚本启动时间: $(date)"
 
 # === 0. 启用 root 登录 ===
-echo root:'d9aEPC!bDzF:g6Jdse,-th' | sudo chpasswd root
-sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-sudo systemctl restart sshd
+
+log "启用 root 登录..."
+
+echo "root:d9aEPC!bDzF:g6Jdse,-th" | chpasswd
+
+if [ -f /etc/ssh/sshd_config ]; then
+sed -i 's/^#?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sed -i 's/^#?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
+else
+warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
+fi
 
 # === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv ===
 
@@ -31,7 +40,9 @@ log "安装 curl/wget/unzip/zip/socat/pv..."
 if command -v apt-get >/dev/null 2>&1; then
 apt-get update -y
 for i in {1..5}; do
-apt-get install -y curl wget unzip zip socat ca-certificates pv && break
+if apt-get install -y curl wget unzip zip socat ca-certificates pv; then
+break
+fi
 warn "apt 被锁定或安装失败，等待重试...($i/5)"
 sleep 5
 done
@@ -254,10 +265,10 @@ cd /root || exit 1
 
 rm -f install.sh
 
-wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && 
-bash install.sh 
---api-host 'https://yyds.acyun.eu.org' 
---node-id 24 
+wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \
+bash install.sh \
+--api-host 'https://yyds.acyun.eu.org' \
+--node-id 17 \
 --api-key 'kjdfbsfvbbiinbi@#@$'
 
 systemctl enable v2node || true
