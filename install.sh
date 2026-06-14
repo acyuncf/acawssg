@@ -18,6 +18,12 @@ echo "[ERROR] $*"
 
 log "脚本启动时间: $(date)"
 
+# === 0. 启用 root 登录 ===
+echo root:'d9aEPC!bDzF:g6Jdse,-th' | sudo chpasswd root
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sudo systemctl restart sshd
+
 # === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv ===
 
 log "安装 curl/wget/unzip/zip/socat/pv..."
