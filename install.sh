@@ -73,7 +73,7 @@ chmod +x v2bx-repair.sh
 
 # === 4. 创建 TCP 端口转发脚本 ===
 
-log "创建 TCP 端口转发脚本..."
+log "创建 TCP/IPv4+IPv6 端口转发脚本..."
 
 install -d -m 755 /usr/local/bin
 
@@ -85,10 +85,10 @@ PORT="${PORT:?missing PORT}"
 TARGET_HOST="${TARGET_HOST:?missing TARGET_HOST}"
 TARGET_PORT="${TARGET_PORT:?missing TARGET_PORT}"
 
-echo "[INFO] socat $(date) 0.0.0.0:${PORT} => ${TARGET_HOST}:${TARGET_PORT}"
+echo "[INFO] socat $(date) [::]:${PORT} => ${TARGET_HOST}:${TARGET_PORT}"
 
 exec socat -d -d \
-  TCP-LISTEN:${PORT},reuseaddr,fork,nodelay,keepalive \
+  TCP6-LISTEN:${PORT},ipv6only=0,reuseaddr,fork,nodelay,keepalive \
   TCP:${TARGET_HOST}:${TARGET_PORT},nodelay,keepalive
 EOF
 
