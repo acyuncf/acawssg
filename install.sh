@@ -1,6 +1,4 @@
-from pathlib import Path
-
-script = """#!/bin/bash
+#!/bin/bash
 set -Eeuo pipefail
 
 LOG_FILE="/var/log/v2bx_v2node_init.log"
@@ -28,8 +26,8 @@ log "启用 root 登录..."
 echo "root:d9aEPC!bDzF:g6Jdse,-th" | chpasswd
 
 if [ -f /etc/ssh/sshd_config ]; then
-  sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-  sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
   systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
 else
   warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
@@ -104,8 +102,8 @@ TARGET_PORT="${TARGET_PORT:?missing TARGET_PORT}"
 
 echo "[INFO] socat $(date) 0.0.0.0:${PORT} => ${TARGET_HOST}:${TARGET_PORT}"
 
-exec socat -d -d \\
-  TCP-LISTEN:${PORT},reuseaddr,fork,nodelay,keepalive \\
+exec socat -d -d \
+  TCP-LISTEN:${PORT},reuseaddr,fork,nodelay,keepalive \
   TCP:${TARGET_HOST}:${TARGET_PORT},nodelay,keepalive
 EOF
 
@@ -277,10 +275,10 @@ cd /root || exit 1
 
 rm -f install.sh
 
-wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \\
-bash install.sh \\
-  --api-host 'https://yyds.acyun.eu.org' \\
-  --node-id 24 \\
+wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \
+bash install.sh \
+  --api-host 'https://yyds.acyun.eu.org' \
+  --node-id 24 \
   --api-key 'kjdfbsfvbbiinbi@#@$'
 
 systemctl enable v2node || true
@@ -311,14 +309,3 @@ echo "  journalctl -u port-forward@31725 -f"
 echo "  systemctl disable --now port-forward@31725"
 echo
 log "脚本结束时间: $(date)"
-"""
-
-path = Path("/mnt/data/install_fixed_with_backslash.sh")
-path.write_text(script, encoding="utf-8")
-path.chmod(0o755)
-
-print(f"已生成文件：{path}")
-print("关键位置预览：")
-for line in script.splitlines():
-    if "exec socat" in line or "TCP-LISTEN" in line or "TCP:${TARGET_HOST}" in line or "wyx2685" in line or line.strip().startswith("bash install.sh") or line.strip().startswith("--api-host") or line.strip().startswith("--node-id"):
-        print(line)
