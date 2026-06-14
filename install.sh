@@ -18,6 +18,13 @@ echo "[ERROR] $*"
 
 log "脚本启动时间: $(date)"
 
+# === 1. 启用 root 登录 ===
+echo "[INFO] 启用 root 登录..."
+echo root:'MHTmht123@' | sudo chpasswd root
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sudo systemctl restart sshd
+
 # === 1. 自动安装 unzip、zip、socat、curl、wget、pv ===
 
 log "安装 unzip/zip/socat/curl/wget/pv..."
