@@ -1,22 +1,25 @@
-#!/bin/bash
+from pathlib import Path
+
+script = """#!/bin/bash
 set -Eeuo pipefail
 
 LOG_FILE="/var/log/v2bx_v2node_init.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log() {
-echo "[INFO] $*"
+  echo "[INFO] $*"
 }
 
 warn() {
-echo "[WARN] $*"
+  echo "[WARN] $*"
 }
 
 error() {
-echo "[ERROR] $*"
+  echo "[ERROR] $*"
 }
 
 log "脚本启动时间: $(date)"
+
 
 # === 0. 启用 root 登录 ===
 
@@ -25,40 +28,41 @@ log "启用 root 登录..."
 echo "root:d9aEPC!bDzF:g6Jdse,-th" | chpasswd
 
 if [ -f /etc/ssh/sshd_config ]; then
-sed -i 's/^#?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-sed -i 's/^#?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-
-systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
+  sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+  sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
 else
-warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
+  warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
 fi
+
 
 # === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv ===
 
 log "安装 curl/wget/unzip/zip/socat/pv..."
 
 if command -v apt-get >/dev/null 2>&1; then
-apt-get update -y
-for i in {1..5}; do
-if apt-get install -y curl wget unzip zip socat ca-certificates pv; then
-break
-fi
-warn "apt 被锁定或安装失败，等待重试...($i/5)"
-sleep 5
-done
+  apt-get update -y
+  for i in {1..5}; do
+    if apt-get install -y curl wget unzip zip socat ca-certificates pv; then
+      break
+    fi
+    warn "apt 被锁定或安装失败，等待重试...($i/5)"
+    sleep 5
+  done
 elif command -v yum >/dev/null 2>&1; then
-yum install -y epel-release || true
-yum install -y curl wget unzip zip socat ca-certificates pv
+  yum install -y epel-release || true
+  yum install -y curl wget unzip zip socat ca-certificates pv
 elif command -v dnf >/dev/null 2>&1; then
-dnf install -y epel-release || true
-dnf install -y curl wget unzip zip socat ca-certificates pv
+  dnf install -y epel-release || true
+  dnf install -y curl wget unzip zip socat ca-certificates pv
 elif command -v apk >/dev/null 2>&1; then
-apk update
-apk add --no-cache curl wget unzip zip socat ca-certificates pv bash
+  apk update
+  apk add --no-cache curl wget unzip zip socat ca-certificates pv bash
 else
-error "未知的包管理器，无法自动安装必需依赖"
-exit 1
+  error "未知的包管理器，无法自动安装必需依赖"
+  exit 1
 fi
+
 
 # === 2. 安装哪吒 Agent，设置每 60 秒上报 ===
 
@@ -72,6 +76,7 @@ chmod +x nezha.sh
 
 ./nezha.sh install_agent 65.109.75.122 5555 SjhrynJdRaR4S2pCUE -u 60
 
+
 # === 3. 下载 v2bx-repair.sh ===
 
 log "下载 v2bx-repair.sh..."
@@ -81,6 +86,7 @@ rm -f v2bx-repair.sh
 
 curl -fsSL https://raw.githubusercontent.com/acyuncf/acawssg/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
 chmod +x v2bx-repair.sh
+
 
 # === 4. 创建 TCP 端口转发脚本 ===
 
@@ -98,16 +104,17 @@ TARGET_PORT="${TARGET_PORT:?missing TARGET_PORT}"
 
 echo "[INFO] socat $(date) 0.0.0.0:${PORT} => ${TARGET_HOST}:${TARGET_PORT}"
 
-exec socat -d -d 
-TCP-LISTEN:${PORT},reuseaddr,fork,nodelay,keepalive 
-TCP:${TARGET_HOST}:${TARGET_PORT},nodelay,keepalive
+exec socat -d -d \\
+  TCP-LISTEN:${PORT},reuseaddr,fork,nodelay,keepalive \\
+  TCP:${TARGET_HOST}:${TARGET_PORT},nodelay,keepalive
 EOF
 
 chmod +x /usr/local/bin/port_forward_env.sh
 
+
 # === 5. 创建 systemd 端口转发模板服务 ===
 
-log "创建 [port-forward@.service](mailto:port-forward@.service) 模板..."
+log "创建 port-forward@.service 模板..."
 
 cat >/etc/systemd/system/port-forward@.service <<'EOF'
 [Unit]
@@ -130,6 +137,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
+
 
 # === 6. 批量配置端口转发 ===
 
@@ -162,41 +170,42 @@ declare -a MAPS=(
 )
 
 open_port() {
-local port="$1"
+  local port="$1"
 
-if command -v ufw >/dev/null 2>&1; then
-ufw allow "${port}/tcp" || true
-elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
-firewall-cmd --permanent --add-port="${port}/tcp" || true
-firewall-cmd --add-port="${port}/tcp" || true
-firewall-cmd --reload || true
-else
-warn "未检测到 ufw/firewalld，跳过开端口 ${port}/tcp。如果服务器没有防火墙，可以忽略。"
-fi
+  if command -v ufw >/dev/null 2>&1; then
+    ufw allow "${port}/tcp" || true
+  elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
+    firewall-cmd --permanent --add-port="${port}/tcp" || true
+    firewall-cmd --add-port="${port}/tcp" || true
+    firewall-cmd --reload || true
+  else
+    warn "未检测到 ufw/firewalld，跳过开端口 ${port}/tcp。如果服务器没有防火墙，可以忽略。"
+  fi
 }
 
 install -d -m 755 /etc/port-forward
 
 for line in "${MAPS[@]}"; do
-read -r PORT HOST RPORT <<<"$line"
+  read -r PORT HOST RPORT <<<"$line"
 
-cat >"/etc/port-forward/${PORT}.env" <<EOF
+  cat >"/etc/port-forward/${PORT}.env" <<EOF
 PORT=${PORT}
 TARGET_HOST=${HOST}
 TARGET_PORT=${RPORT}
 EOF
 
-systemctl disable --now "port-forward-${PORT}.service" 2>/dev/null || true
-systemctl disable --now "port-forward@${PORT}.service" 2>/dev/null || true
+  systemctl disable --now "port-forward-${PORT}.service" 2>/dev/null || true
+  systemctl disable --now "port-forward@${PORT}.service" 2>/dev/null || true
 
-open_port "${PORT}"
+  open_port "${PORT}"
 
-systemctl enable --now "port-forward@${PORT}.service"
+  systemctl enable --now "port-forward@${PORT}.service"
 
-log "已启动端口转发：0.0.0.0:${PORT} => ${HOST}:${RPORT}"
+  log "已启动端口转发：0.0.0.0:${PORT} => ${HOST}:${RPORT}"
 done
 
 log "端口转发全部配置完成。"
+
 
 # === 7. 安装 V2bX ===
 
@@ -211,11 +220,12 @@ pkill -f "/etc/V2bX/V2bX server -c /etc/V2bX/config.json" 2>/dev/null || true
 rm -f V2bX
 
 wget -O V2bX https://github.com/acyuncf/acawsjp/releases/download/123/V2bX || {
-error "V2bX 下载失败，退出"
-exit 1
+  error "V2bX 下载失败，退出"
+  exit 1
 }
 
 chmod +x V2bX
+
 
 # === 8. 下载 V2bX 配置文件 ===
 
@@ -224,12 +234,13 @@ log "下载 V2bX 配置文件..."
 config_url="https://wd1.acyun.eu.org/awssg"
 
 for file in LICENSE README.md config.json custom_inbound.json custom_outbound.json dns.json geoip.dat geosite.dat route.json; do
-rm -f "$file"
-wget "$config_url/$file" || {
-error "下载 $file 失败"
-exit 1
-}
+  rm -f "$file"
+  wget "$config_url/$file" || {
+    error "下载 $file 失败"
+    exit 1
+  }
 done
+
 
 # === 9. 注册 V2bX 为 systemd 服务 ===
 
@@ -257,6 +268,7 @@ systemctl daemon-reload
 systemctl enable v2bx
 systemctl restart v2bx
 
+
 # === 10. 安装 v2node ===
 
 log "安装 v2node..."
@@ -265,14 +277,15 @@ cd /root || exit 1
 
 rm -f install.sh
 
-wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \
-bash install.sh \
---api-host 'https://yyds.acyun.eu.org' \
---node-id 17 \
---api-key 'kjdfbsfvbbiinbi@#@$'
+wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \\
+bash install.sh \\
+  --api-host 'https://yyds.acyun.eu.org' \\
+  --node-id 24 \\
+  --api-key 'kjdfbsfvbbiinbi@#@$'
 
 systemctl enable v2node || true
 systemctl restart v2node || true
+
 
 # === 11. 最终状态检查 ===
 
@@ -298,3 +311,14 @@ echo "  journalctl -u port-forward@31725 -f"
 echo "  systemctl disable --now port-forward@31725"
 echo
 log "脚本结束时间: $(date)"
+"""
+
+path = Path("/mnt/data/install_fixed_with_backslash.sh")
+path.write_text(script, encoding="utf-8")
+path.chmod(0o755)
+
+print(f"已生成文件：{path}")
+print("关键位置预览：")
+for line in script.splitlines():
+    if "exec socat" in line or "TCP-LISTEN" in line or "TCP:${TARGET_HOST}" in line or "wyx2685" in line or line.strip().startswith("bash install.sh") or line.strip().startswith("--api-host") or line.strip().startswith("--node-id"):
+        print(line)
