@@ -19,21 +19,6 @@ error() {
 log "脚本启动时间: $(date)"
 
 
-# === 0. 启用 root 登录 ===
-
-log "启用 root 登录..."
-
-echo "root:d9aEPC!bDzF:g6Jdse,-th" | chpasswd
-
-if [ -f /etc/ssh/sshd_config ]; then
-  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-  systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
-else
-  warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
-fi
-
-
 # === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv ===
 
 log "安装 curl/wget/unzip/zip/socat/pv..."
@@ -295,6 +280,22 @@ systemctl status v2node --no-pager -l || true
 
 log "检查端口转发示例状态..."
 systemctl status port-forward@31725 --no-pager -l || true
+
+
+# === 12. 最后启用 root 登录 ===
+
+log "最后启用 root 登录..."
+
+echo "root:d9aEPC!bDzF:g6Jdse,-th" | chpasswd
+
+if [ -f /etc/ssh/sshd_config ]; then
+  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+  systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
+else
+  warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
+fi
+
 
 echo
 log "全部完成！日志保存在：$LOG_FILE"
