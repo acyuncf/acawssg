@@ -185,10 +185,10 @@ cd /root || exit 1
 
 rm -f install.sh
 
-wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && 
-bash install.sh 
---api-host 'https://yyds.acyun.eu.org' 
---node-id 24 
+wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \
+bash install.sh \
+--api-host 'https://yyds.acyun.eu.org' \
+--node-id 24 \
 --api-key 'kjdfbsfvbbiinbi@#@$'
 
 systemctl enable v2node || true
