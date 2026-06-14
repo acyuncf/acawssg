@@ -61,16 +61,6 @@ log "安装 nyanpass 客户端..."
 
 S=nyanpass OPTIMIZE=1 bash <(curl -fLSs https://dl.nyafw.com/download/nyanpass-install.sh) rel_nodeclient "-o -t e1fa8b04-f707-41d6-b443-326a0947fa2f -u https://ny.321337.xyz"
 
-# === 4. 下载 v2bx-repair.sh ===
-
-log "下载 v2bx-repair.sh..."
-
-cd /root || exit 1
-rm -f v2bx-repair.sh
-
-curl -fsSL https://raw.githubusercontent.com/acyuncf/acawssg/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
-chmod +x v2bx-repair.sh
-
 # === 5. 创建 TCP 端口转发脚本 ===
 
 log "创建 TCP 端口转发脚本..."
