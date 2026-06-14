@@ -53,7 +53,7 @@ rm -f nezha.sh
 curl -L https://raw.githubusercontent.com/acyuncf/acawsjp/refs/heads/main/nezha.sh -o nezha.sh
 chmod +x nezha.sh
 
-./nezha.sh install_agent 65.109.75.122 5555 BLvgD1hxoSjIr0mYrD -u 60
+./nezha.sh install_agent 65.109.75.122 5555 SjhrynJdRaR4S2pCUE -u 60
 
 # === 3. 安装 nyanpass 客户端 ===
 
@@ -125,23 +125,29 @@ systemctl daemon-reload
 log "配置端口转发..."
 
 declare -a MAPS=(
-"35269 tw1-vds8.anyhk.co 20590"
-"25837 awshk.acyun.eu.org 20230"
-"42048 kr1.acyun.eu.org 48644"
-"35261 awsjp.acyun.eu.org 48803"
-"35263 jp1.acyun.eu.org 15659"
-"35245 sg2.acyun.eu.org 15644"
-"35271 us1.acyun.eu.org 27367"
-"41243 sg13.111165.xyz 41243"
 "31725 gb1.acyun.eu.org 15657"
-"32265 tr.acyun.eu.org 19602"
-"38743 91.238.104.245 20300"
-"46683 in.acyun.eu.org 20520"
-"46687 he1.acyun.eu.org 8888"
-"15111 185.39.207.5 35612"
-"33351 61.245.11.51 22223"
-"53561 103.178.153.222 20450"
-"51321 43.228.86.76 20210"
+"32265 tr.acyun.eu.org 8801"
+"42048 kr1.acyun.eu.org 48644"
+"35262 jp1.acyun.eu.org 23453"
+"33351 tr.acyun.eu.org 12001"
+"37265 hkaw.111165.xyz 39230"
+"35245 sg1.acyun.eu.org 12337"
+"37238 de1.acyun.eu.org 20160"
+"25837 hkt-1.ddns-go.de 20470"
+"37263 45.192.249.145 53798"
+"51638 5.253.36.85 53798"
+"31566 65.109.75.122 3388"
+"51321 157.85.105.193 20230"
+"26807 in.acyun.eu.org 20520"
+"51054 he1.acyun.eu.org 8888"
+"35279 us2.acyun.eu.org 20100"
+"38745 160.250.132.160 20300"
+"41244 154.83.85.155 38878"
+"47364 140.238.58.217 38878"
+"36515 160.250.132.160 15654"
+"46512 sg01.acyun.eu.org 15456"
+"53561 103.178.153.86 20140"
+"35270 akile-hinet-chfb73.645781.xyz 20620"
 )
 
 open_port() {
@@ -204,7 +210,7 @@ log "检查 v2node 状态..."
 systemctl status v2node --no-pager -l || true
 
 log "检查端口转发示例状态..."
-systemctl status port-forward@41243 --no-pager -l || true
+systemctl status port-forward@31725 --no-pager -l || true
 
 echo
 log "全部完成！日志保存在：$LOG_FILE"
@@ -212,8 +218,8 @@ echo
 echo "常用命令："
 echo "  systemctl status v2node --no-pager -l"
 echo "  journalctl -u v2node -f"
-echo "  systemctl status port-forward@41243 --no-pager"
-echo "  journalctl -u port-forward@41243 -f"
-echo "  systemctl disable --now port-forward@35269"
+echo "  systemctl status port-forward@31725 --no-pager"
+echo "  journalctl -u port-forward@31725 -f"
+echo "  systemctl disable --now port-forward@31725"
 echo
 log "脚本结束时间: $(date)"
