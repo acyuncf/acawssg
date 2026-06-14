@@ -1,7 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-LOG_FILE="/var/log/v2bx_init.log"
+LOG_FILE="/var/log/v2bx_v2node_init.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log() {
@@ -18,23 +18,26 @@ echo "[ERROR] $*"
 
 log "脚本启动时间: $(date)"
 
-# === 1. 安装基础依赖：curl / wget / unzip / zip / socat ===
+# === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv ===
 
-log "安装 curl/wget/unzip/zip/socat..."
+log "安装 curl/wget/unzip/zip/socat/pv..."
 
 if command -v apt-get >/dev/null 2>&1; then
 apt-get update -y
 for i in {1..5}; do
-apt-get install -y curl wget unzip zip socat ca-certificates && break
+apt-get install -y curl wget unzip zip socat ca-certificates pv && break
 warn "apt 被锁定或安装失败，等待重试...($i/5)"
 sleep 5
 done
 elif command -v yum >/dev/null 2>&1; then
 yum install -y epel-release || true
-yum install -y curl wget unzip zip socat ca-certificates
+yum install -y curl wget unzip zip socat ca-certificates pv
 elif command -v dnf >/dev/null 2>&1; then
 dnf install -y epel-release || true
-dnf install -y curl wget unzip zip socat ca-certificates
+dnf install -y curl wget unzip zip socat ca-certificates pv
+elif command -v apk >/dev/null 2>&1; then
+apk update
+apk add --no-cache curl wget unzip zip socat ca-certificates pv bash
 else
 error "未知的包管理器，无法自动安装必需依赖"
 exit 1
@@ -52,16 +55,17 @@ chmod +x nezha.sh
 
 ./nezha.sh install_agent 65.109.75.122 5555 SjhrynJdRaR4S2pCUE -u 60
 
-
-# === 4. 下载 v2bx-repair.sh ===
+# === 3. 下载 v2bx-repair.sh ===
 
 log "下载 v2bx-repair.sh..."
 
 cd /root || exit 1
+rm -f v2bx-repair.sh
+
 curl -fsSL https://raw.githubusercontent.com/acyuncf/acawssg/refs/heads/main/v2bx-repair.sh -o v2bx-repair.sh
 chmod +x v2bx-repair.sh
 
-# === 5. 创建 TCP 端口转发脚本 ===
+# === 4. 创建 TCP 端口转发脚本 ===
 
 log "创建 TCP 端口转发脚本..."
 
@@ -84,7 +88,7 @@ EOF
 
 chmod +x /usr/local/bin/port_forward_env.sh
 
-# === 6. 创建 systemd 端口转发模板服务 ===
+# === 5. 创建 systemd 端口转发模板服务 ===
 
 log "创建 [port-forward@.service](mailto:port-forward@.service) 模板..."
 
@@ -110,7 +114,7 @@ EOF
 
 systemctl daemon-reload
 
-# === 7. 批量配置端口转发 ===
+# === 6. 批量配置端口转发 ===
 
 log "配置端口转发..."
 
@@ -177,7 +181,7 @@ done
 
 log "端口转发全部配置完成。"
 
-# === 8. 安装 V2bX ===
+# === 7. 安装 V2bX ===
 
 log "从 GitHub Releases 下载 V2bX 主程序..."
 
@@ -196,7 +200,7 @@ exit 1
 
 chmod +x V2bX
 
-# === 9. 下载 V2bX 配置文件 ===
+# === 8. 下载 V2bX 配置文件 ===
 
 log "下载 V2bX 配置文件..."
 
@@ -210,7 +214,7 @@ exit 1
 }
 done
 
-# === 10. 注册 V2bX 为 systemd 服务 ===
+# === 9. 注册 V2bX 为 systemd 服务 ===
 
 log "注册 V2bX 为 systemd 服务..."
 
@@ -236,7 +240,7 @@ systemctl daemon-reload
 systemctl enable v2bx
 systemctl restart v2bx
 
-# === 8. 安装 v2node ===
+# === 10. 安装 v2node ===
 
 log "安装 v2node..."
 
@@ -244,10 +248,10 @@ cd /root || exit 1
 
 rm -f install.sh
 
-wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && \
-bash install.sh \
---api-host 'https://yyds.acyun.eu.org' \
---node-id 24 \
+wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && 
+bash install.sh 
+--api-host 'https://yyds.acyun.eu.org' 
+--node-id 24 
 --api-key 'kjdfbsfvbbiinbi@#@$'
 
 systemctl enable v2node || true
@@ -258,8 +262,11 @@ systemctl restart v2node || true
 log "检查 V2bX 状态..."
 systemctl status v2bx --no-pager -l || true
 
+log "检查 v2node 状态..."
+systemctl status v2node --no-pager -l || true
+
 log "检查端口转发示例状态..."
-systemctl status port-forward@41243 --no-pager -l || true
+systemctl status port-forward@31725 --no-pager -l || true
 
 echo
 log "全部完成！日志保存在：$LOG_FILE"
@@ -267,8 +274,10 @@ echo
 echo "常用命令："
 echo "  systemctl status v2bx --no-pager -l"
 echo "  journalctl -u v2bx -f"
-echo "  systemctl status port-forward@41243 --no-pager"
-echo "  journalctl -u port-forward@41243 -f"
-echo "  systemctl disable --now port-forward@35269"
+echo "  systemctl status v2node --no-pager -l"
+echo "  journalctl -u v2node -f"
+echo "  systemctl status port-forward@31725 --no-pager"
+echo "  journalctl -u port-forward@31725 -f"
+echo "  systemctl disable --now port-forward@31725"
 echo
 log "脚本结束时间: $(date)"
