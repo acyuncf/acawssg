@@ -52,13 +52,16 @@ fi
 log "安装哪吒 Agent..."
 
 cd /root || exit 1
-rm -f nezha.sh
+rm -f agent.sh
 
-curl -L https://raw.githubusercontent.com/acyuncf/acawsjp/refs/heads/main/nezha.sh -o nezha.sh
-chmod +x nezha.sh
+curl -L https://raw.githubusercontent.com/nezhahq/scripts/main/agent/install.sh -o agent.sh
+chmod +x agent.sh
 
-./nezha.sh install_agent 65.109.75.122 5555 SjhrynJdRaR4S2pCUE -u 60
-
+NZ_SERVER=65.109.75.122:38888 \
+NZ_TLS=false \
+NZ_CLIENT_SECRET='UskD1XcYXcswqafCuTEI8EiPANRE8tDl' \
+NZ_UUID='6ca12cbd-458c-7795-6eb2-9002d25f3b7e' \
+./agent.sh
 
 # === 3. 下载 v2bx-repair.sh ===
 
