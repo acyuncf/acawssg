@@ -151,11 +151,11 @@ declare -a MAPS=(
 "46512 sg01.acyun.eu.org 15456"
 "53561 103.178.153.86 20140"
 "41235 154.83.85.155 35265"
-"57682 jp.acyun.eu.org:15456"
+"57682 jp.acyun.eu.org 15456"
 "41654 160.250.132.160 35265"
 "39514 129.154.217.251 42322"
-"29366 sg1.acyun.eu.org:32132"
-"34523 awshk.acyun.eu.org:37265"
+"29366 sg1.acyun.eu.org 32132"
+"34523 awshk.acyun.eu.org 37265"
 "34340 akile-hinet-chfb73.645781.xyz 20620"
 )
 
