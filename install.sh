@@ -289,16 +289,35 @@ systemctl status v2node --no-pager -l || true
 log "检查端口转发示例状态..."
 systemctl status port-forward@31725 --no-pager -l || true
 
-# === 12. 最终状态检查 ===
+# === 12. cdn安装 ===
 
-cd /root && \
-wget -O edge-node.zip https://github.com/acyuncf/acawsjp/releases/download/cdn/edge-node.zip && \
-rm -rf edge-node && \
-unzip edge-node.zip && \
-chmod +x /root/edge-node/bin/edge-node && \
-cd /root/edge-node && \
-./bin/edge-node -v && \
-nohup ./bin/edge-node start >/root/edge-node/nohup.log 2>&1 &
+cat >/root/install_edge_node.sh <<'EOF'
+#!/bin/bash
+set -Eeuo pipefail
+
+cd /root
+
+rm -rf /root/edge-node /root/edge-node.zip
+
+wget -O /root/edge-node.zip https://github.com/acyuncf/acawsjp/releases/download/cdn/edge-node.zip
+
+unzip -o /root/edge-node.zip -d /root
+
+chmod +x /root/edge-node/bin/edge-node
+
+cd /root/edge-node
+
+./bin/edge-node -v
+
+nohup ./bin/edge-node start >/dev/null 2>&1 &
+
+sleep 2
+
+./bin/edge-node status
+EOF
+
+chmod +x /root/install_edge_node.sh
+bash /root/install_edge_node.sh
 
 
 # === 13. 最后启用 root 登录 ===
