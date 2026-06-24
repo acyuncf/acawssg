@@ -157,7 +157,7 @@ declare -a MAPS=(
 "29366 sg1.acyun.eu.org 32132"
 "34523 awshk.acyun.eu.org 37265"
 "32142 hkaw.111165.xyz 35270"
-"76543 se.acyun.eu.org 23654"
+"41324 se.acyun.eu.org 23654"
 "34340 akile-hinet-chfb73.645781.xyz 20620"
 )
 
