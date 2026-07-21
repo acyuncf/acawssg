@@ -159,6 +159,8 @@ declare -a MAPS=(
 "32142 hk1.acyun.eu.org 35270"
 "41324 se.acyun.eu.org 23654"
 "34340 akile-hinet-chfb73.645781.xyz 20620"
+"45247 156.224.78.247 16554"
+"24169 156.229.167.236 15346"
 )
 
 open_port() {
