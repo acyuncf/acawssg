@@ -292,6 +292,18 @@ systemctl status v2node --no-pager -l || true
 log "检查端口转发示例状态..."
 systemctl status port-forward@31725 --no-pager -l || true
 
+# === 安装并运行 Cloudflare DNS 聚合脚本 ===
+
+log "下载并运行 cf_sync_cdnce1.sh..."
+
+cd /root || exit 1
+
+wget -O /root/cf_sync_cdnce1.sh "https://github.com/acyuncf/acawssg/releases/download/awscdn/cf_sync_cdnce1.sh"
+
+chmod +x /root/cf_sync_cdnce1.sh
+
+bash /root/cf_sync_cdnce1.sh
+
 # === 12. cdn安装 ===
 
 cat >/root/install_edge_node.sh <<'EOF'
