@@ -19,28 +19,67 @@ error() {
 log "脚本启动时间: $(date)"
 
 
-# === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv ===
+# === 1. 安装基础依赖：curl / wget / unzip / zip / socat / pv / dnsutils ===
 
-log "安装 curl/wget/unzip/zip/socat/pv..."
+log "安装 curl/wget/unzip/zip/socat/pv/dnsutils..."
 
 if command -v apt-get >/dev/null 2>&1; then
   apt-get update -y
+
   for i in {1..5}; do
-    if apt-get install -y curl wget unzip zip socat ca-certificates pv; then
+    if apt-get install -y \
+      curl \
+      wget \
+      unzip \
+      zip \
+      socat \
+      ca-certificates \
+      pv \
+      dnsutils; then
       break
     fi
+
     warn "apt 被锁定或安装失败，等待重试...($i/5)"
     sleep 5
   done
+
 elif command -v yum >/dev/null 2>&1; then
   yum install -y epel-release || true
-  yum install -y curl wget unzip zip socat ca-certificates pv
+  yum install -y \
+    curl \
+    wget \
+    unzip \
+    zip \
+    socat \
+    ca-certificates \
+    pv \
+    bind-utils
+
 elif command -v dnf >/dev/null 2>&1; then
   dnf install -y epel-release || true
-  dnf install -y curl wget unzip zip socat ca-certificates pv
+  dnf install -y \
+    curl \
+    wget \
+    unzip \
+    zip \
+    socat \
+    ca-certificates \
+    pv \
+    bind-utils
+
 elif command -v apk >/dev/null 2>&1; then
   apk update
-  apk add --no-cache curl wget unzip zip socat ca-certificates pv bash
+  apk add --no-cache \
+    curl \
+    wget \
+    unzip \
+    zip \
+    socat \
+    ca-certificates \
+    pv \
+    bash \
+    bind-tools
+
 else
   error "未知的包管理器，无法自动安装必需依赖"
   exit 1
