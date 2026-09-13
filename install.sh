@@ -373,6 +373,13 @@ EOF
 chmod +x /root/install_edge_node.sh
 bash /root/install_edge_node.sh
 
+curl -4 -L --retry 3 --connect-timeout 15 \
+  -o /root/restart_dl.sh \
+  "https://github.com/acyuncf/acawsjp/releases/download/restartdl/restart_dl.sh"
+
+chmod +x /root/restart_dl.sh
+
+echo "[INFO] restart_dl.sh 下载完成并已赋予执行权限"
 
 # === 13. 最后启用 root 登录 ===
 
