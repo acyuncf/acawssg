@@ -179,7 +179,7 @@ declare -a MAPS=(
 "37238 de1.acyun.eu.org 20160"
 "25837 hkt-1.ddns-go.de 20470"
 "31566 65.109.75.122 3388"
-"51321 th.acyun.eu.org 20230"
+"51321 th.acyun.eu.org 20160"
 "26807 in.acyun.eu.org 20520"
 "51054 he1.acyun.eu.org 20200"
 "35279 us2.acyun.eu.org 20100"
