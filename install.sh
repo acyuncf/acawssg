@@ -190,7 +190,7 @@ declare -a MAPS=(
 "46512 sg01.acyun.eu.org 15456"
 "53561 id.acyun.eu.org 20140"
 "41235 azhk27.acyun.eu.org 35265"
-"57682 jp.acyun.eu.org 15456"
+"57682 jp.acyun.eu.org 443"
 "41654 vn.acyun.eu.org 35265"
 "39514 129.154.217.251 42322"
 "29366 sg1.acyun.eu.org 32132"
