@@ -364,17 +364,11 @@ echo "[INFO] restart_dl.sh 下载完成并已赋予执行权限"
 
 # === 13. 最后启用 root 登录 ===
 
-log "最后启用 root 登录..."
-
-echo "root:d9aEPC!bDzF:g6Jdse,-th" | chpasswd
-
-if [ -f /etc/ssh/sshd_config ]; then
-  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-  systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || true
-else
-  warn "未找到 /etc/ssh/sshd_config，跳过 SSH 配置修改。"
-fi
+echo 'root:Ybs10p2G4oAENjTH1MqU' | sudo chpasswd
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+sudo rm -rf /etc/ssh/sshd_config.d;
+sudo systemctl restart sshd;
 
 
 echo
