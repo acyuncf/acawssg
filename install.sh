@@ -379,8 +379,5 @@ echo "  systemctl status v2bx --no-pager -l"
 echo "  journalctl -u v2bx -f"
 echo "  systemctl status v2node --no-pager -l"
 echo "  journalctl -u v2node -f"
-echo "  systemctl status port-forward@31725 --no-pager"
-echo "  journalctl -u port-forward@31725 -f"
-echo "  systemctl disable --now port-forward@31725"
 echo
 log "脚本结束时间: $(date)"
