@@ -169,7 +169,7 @@ systemctl daemon-reload
 log "配置端口转发..."
 
 declare -a MAPS=(
-"31725 gb1.acyun.eu.org 15657"
+"31725 gb1.acyun.eu.org 12354"
 "32265 tr.acyun.eu.org 8801"
 "42048 kr1.acyun.eu.org 48644"
 "35262 jp1.acyun.eu.org 23453"
